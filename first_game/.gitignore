@@ -1,0 +1,23 @@
+# Arquivos de compilação
+*.o
+*.obj
+*.lst
+*.map
+*.sym
+*.gb
+*.sav
+*.gbo
+*.asm~
+*.tmp
+
+# Pastas comuns de build
+/build/
+/bin/
+/out/
+
+# Arquivos temporários do editor
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
