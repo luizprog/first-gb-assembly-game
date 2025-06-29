@@ -1,11 +1,24 @@
-all: first_jogo.gb
+# Makefile
 
-first_jogo.gb: code.o
-	rgblink -o first_jogo.gb code.o
-	rgbfix -v -p 0 first_jogo.gb
+RGBASM = rgbasm
+RGBLINK = rgblink
+RGBFIX = rgbfix
 
-code.o: code.asm
-	rgbasm -o code.o code.asm
+SRC = src/code.asm
+OBJ = build/code.o
+OUTPUT = build/first_jogo.gb
 
-clean: 
-	rm -f *.0 *.gb	
+.PHONY: all clean
+
+all: $(OUTPUT)
+
+$(OUTPUT): $(OBJ)
+	$(RGBLINK) -o $(OUTPUT) $(OBJ)
+	$(RGBFIX) -v -p 0 $(OUTPUT)
+
+build/code.o: $(SRC)
+	@mkdir -p build
+	$(RGBASM) -o build/code.o -i include -i assets $(SRC)
+
+clean:
+	rm -rf build

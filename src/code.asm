@@ -1,7 +1,11 @@
+INCLUDE "include/hardware.inc"
+
 SECTION "Header", ROM0[$0100]
     jp Start                ; Pula para o início do programa em "Start"
 
 SECTION "Main", ROM0
+
+SECTION "Constants", ROM0
 
 Start:
     ; Desativa a tela antes de mexer na VRAM (para evitar glitches)
@@ -12,6 +16,12 @@ Start:
     ld hl, BlockTileData   ; HL aponta para início dos dados do tile
     ld de, $8000           ; DE aponta para o endereço VRAM onde será carregado
     ld bc, BlockTileDataEnd - BlockTileData  ; BC = tamanho dos dados em bytes
+    ld a, 0
+    ld [MoveCoolDown], a
+
+    ld a, 5
+    ld [CoolDownDelay], a
+    
 
 LoadTiles:
     ld a, [hl]             ; Lê um byte dos dados do tile
@@ -67,6 +77,10 @@ ReadInput:
 ; Atualizar posição do jogador
 ;-----------------------------
 UpdatePlayer:
+    ld a, [MoveCoolDown]
+    cp 0
+    jr nz, .decreaseCoolDown ; Se diferente de zero, somente decremente o contador e sai 
+
     ld a, [PlayerY]        ; Carrega posição Y atual
     ld b, a                ; Salva em B para manipulação
     ld a, [PlayerX]        ; Carrega posição X atual
@@ -74,22 +88,36 @@ UpdatePlayer:
 
     ld a, [InputState]     ; Carrega o estado dos botões
 
+    ld d, 0 ; Flag de movimeto em D
+
     bit 2, a               ; Testa bit 2 (CIMA)
     jr z, .skipUp          ; Se bit 2 = 0, pula decremento
     dec b                  ; Se bit 2 = 1, move para cima (Y--)
+    inc d
 .skipUp:
+   
     bit 3, a               ; Testa bit 3 (BAIXO)
     jr z, .skipDown
     inc b                  ; Move para baixo (Y++)
+    inc d
 .skipDown:
-    bit 1, a               ; Testa bit 1 (ESQUERDA)
+    
+    bit 1, a               ; Testa bit 1 (ESQUERDA) 
     jr z, .skipLeft
     dec c                  ; Move para esquerda (X--)
+    inc d
 .skipLeft:
-    bit 0, a               ; Testa bit 0 (DIREITA)
+  
+    bit 0, a               ; Testa bit 0 (DIREITA) 
     jr z, .skipRight
     inc c                  ; Move para direita (X++)
+    inc d
 .skipRight:
+
+    ; Se houve movimento (0 > 0), aplica cooldown
+    ld a, d
+    cp 0
+    jr z, .skipUpdate
 
     ; ---------- Limite Vertical (Y) ---------- 
     ld a, b 
@@ -130,6 +158,16 @@ UpdatePlayer:
     ld a, c
     ld [$FE01], a
 
+.skipUpdate:
+
+.decreaseCoolDown:
+    ld a, [MoveCoolDown]
+    cp 0
+    jr z, .endUpdate
+    dec a
+    ld [MoveCoolDown], a
+
+.endUpdate    
     ret                    ; Retorna para o loop principal
 
 ;-----------------------------
@@ -140,14 +178,18 @@ SECTION "Vars", WRAM0
 PlayerX: ds 1              ; Variável para posição X do jogador
 PlayerY: ds 1              ; Variável para posição Y do jogador
 InputState: ds 1           ; Variável para armazenar estado dos botões
+MoveCoolDown: ds 1         ; Temporizador entre movimentos
+CoolDownDelay: ds 1        ; Variavel constante para definir delay value/60
 
 SECTION "Tiles", ROM0
 BlockTileData:
-INCBIN "block_tile.bin"    ; Dados binários do tile do jogador
+INCBIN "assets/tiles/block_tile.bin"    ; Dados binários do tile do jogador
 BlockTileDataEnd:
 
 ;-----------------------------
 ; Constantes de I/O
 ;-----------------------------
+; include/hardware.inc
+
 DEF rLCDC = $FF40           ; Endereço do registrador LCD Control
 DEF rP1   = $FF00           ; Endereço do registrador para leitura dos botões
